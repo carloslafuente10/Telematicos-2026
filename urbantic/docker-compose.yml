@@ -1,0 +1,72 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: urbantic-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-urbantic}
+      POSTGRES_USER: ${POSTGRES_USER:-urbantic_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-urbantic_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - urban_pgdata:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urban-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: urbantic-backend
+    restart: unless-stopped
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT:-4000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://urbantic_user:urbantic_password@database:5432/urbantic}
+      JWT_SECRET: ${JWT_SECRET:-replace_this_secret_for_local_development}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urban-network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+    container_name: urbantic-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urban-network
+
+volumes:
+  urban_pgdata:
+
+networks:
+  urban-network:
+    driver: bridge
