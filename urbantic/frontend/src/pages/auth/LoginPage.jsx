@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import Icon from '../../components/ui/Icon.jsx';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -37,24 +38,27 @@ export default function LoginPage() {
 
   return (
     <main className="auth-shell">
+      <div className="auth-backdrop" aria-hidden="true"><span /><span /><span /></div>
       <section className="auth-panel">
+        <div className="auth-brand"><span className="brand-mark"><Icon name="building" size={30} /></span><span>URBANTIC</span></div>
         <h1>Ingresar a URBANTIC</h1>
+        <p className="auth-intro">Reporta y acompaña las mejoras de tu ciudad.</p>
         <form onSubmit={handleSubmit} className="form">
           <label>
             Correo
-            <input name="email" type="email" value={form.email} onChange={handleChange} required />
+            <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="tu@correo.com" autoComplete="email" required />
           </label>
           <label>
-            Password
-            <input name="password" type="password" value={form.password} onChange={handleChange} required />
+            Contraseña
+            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="••••••••" autoComplete="current-password" required />
           </label>
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" disabled={submitting}>
+          <button className="button button-primary button-full" type="submit" disabled={submitting}>
             {submitting ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
-        <p>
-          No tienes cuenta? <Link to="/registro">Registrate</Link>
+        <p className="auth-switch">
+          ¿No tienes cuenta? <Link to="/registro">Regístrate</Link>
         </p>
       </section>
     </main>

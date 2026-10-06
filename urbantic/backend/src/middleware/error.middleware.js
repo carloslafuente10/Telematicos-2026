@@ -2,6 +2,10 @@ function errorHandler(error, _req, res, _next) {
   const statusCode = error.statusCode || 500;
   const message = error.isOperational ? error.message : 'Error interno del servidor.';
 
+  if (!error.isOperational) {
+    console.error(error);
+  }
+
   res.status(statusCode).json({
     success: false,
     message,

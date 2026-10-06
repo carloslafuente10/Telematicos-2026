@@ -27,6 +27,14 @@ function validate(schema) {
         errors.push({ field, message: 'Debe ser texto.' });
       }
 
+      if (rules.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) {
+        errors.push({ field, message: 'Debe ser un número válido.' });
+      }
+
+      if (rules.type === 'boolean' && typeof value !== 'boolean') {
+        errors.push({ field, message: 'Debe ser verdadero o falso.' });
+      }
+
       if (rules.email && !emailRegex.test(value)) {
         errors.push({ field, message: 'Debe ser un correo valido.' });
       }
@@ -37,6 +45,10 @@ function validate(schema) {
 
       if (rules.max && value.length > rules.max) {
         errors.push({ field, message: `Debe tener como maximo ${rules.max} caracteres.` });
+      }
+
+      if (rules.enum && !rules.enum.includes(value)) {
+        errors.push({ field, message: 'El valor seleccionado no es válido.' });
       }
     });
 
@@ -67,9 +79,50 @@ const profileSchema = {
   phone: { required: false, type: 'string', max: 30 }
 };
 
+const reportSchema = {
+  type: { required: true, type: 'string', min: 2, max: 80 },
+  title: { required: true, type: 'string', min: 4, max: 80 },
+  description: { required: true, type: 'string', min: 10, max: 2000 },
+  location: { required: true, type: 'string', min: 3, max: 255 },
+  zone: { required: false, type: 'string', max: 100 },
+  latitude: { required: false, type: 'number' },
+  longitude: { required: false, type: 'number' },
+  image: { required: false, type: 'string', max: 7000000 }
+};
+
+const assignmentSchema = {
+  technicianId: { required: true, type: 'number' }
+};
+
+const statusSchema = {
+  status: {
+    required: true,
+    type: 'string',
+    enum: ['CREADO', 'EN_REVISION', 'ASIGNADO', 'EN_PROCESO', 'RESUELTO', 'CERRADO']
+  },
+  observations: { required: false, type: 'string', max: 3000 },
+  evidence: { required: false, type: 'string', max: 7000000 }
+};
+
+const managedUserSchema = {
+  name: { required: true, type: 'string', min: 3, max: 201 },
+  email: { required: true, type: 'string', email: true, max: 180 },
+  role: { required: true, type: 'string', enum: ['CIUDADANO', 'TECNICO', 'ADMINISTRADOR'] },
+  password: { required: true, type: 'string', min: 8, max: 100 }
+};
+
+const userStatusSchema = {
+  active: { required: true, type: 'boolean' }
+};
+
 module.exports = {
   validate,
   registerSchema,
   loginSchema,
-  profileSchema
+  profileSchema,
+  reportSchema,
+  assignmentSchema,
+  statusSchema,
+  managedUserSchema,
+  userStatusSchema
 };

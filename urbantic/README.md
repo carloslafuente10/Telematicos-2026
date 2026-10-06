@@ -1,6 +1,6 @@
 # URBANTIC
 
-Sistema web de reporte y seguimiento de problemas urbanos. Este repositorio contiene el avance del 25% del proyecto, equivalente al cierre del Sprint 1.
+Sistema web de reporte y seguimiento de problemas urbanos. El proyecto incluye la base funcional del Sprint 1 y la implementacion full stack del Sprint 2.
 
 ## Alcance Sprint 1
 
@@ -11,7 +11,21 @@ Sistema web de reporte y seguimiento de problemas urbanos. Este repositorio cont
 - Perfil de usuario con consulta y edicion.
 - Layout base y navegacion protegida por rol.
 
-No incluye reportes urbanos, mapas, asignaciones, estadisticas, recuperacion de password, verificacion de correo ni refresh tokens.
+## Alcance Sprint 2
+
+- Panel ciudadano con indicadores y reportes recientes.
+- Creacion de reportes con fotografia, ubicacion y vista de mapa.
+- Listado, filtros, detalle y seguimiento por estados.
+- Panel administrador con indicadores, filtros y gestion de reportes.
+- Asignacion de tecnicos y actualizacion administrativa de estados.
+- Gestion de usuarios y consulta de categorias.
+- Panel tecnico, tareas asignadas, observaciones y evidencia de resolucion.
+- Interfaz responsive basada en los mockups aprobados.
+- API REST protegida por JWT y permisos por rol.
+- Persistencia de reportes, asignaciones, evidencias e historial en PostgreSQL.
+- Migracion idempotente automatica al iniciar el backend.
+
+El ciudadano solo puede consultar sus propios reportes, el tecnico solo puede operar los que tiene asignados y el administrador puede consultar, asignar y gestionar todos los reportes.
 
 ## Stack
 
@@ -152,6 +166,35 @@ Content-Type: application/json
 ```
 
 Solo se aceptan `firstName`, `lastName` y `phone`. Cualquier otro campo enviado se ignora.
+
+### Reportes
+
+```http
+GET    /api/reports
+GET    /api/reports/:id
+POST   /api/reports
+PATCH  /api/reports/:id/assignment
+PATCH  /api/reports/:id/status
+Authorization: Bearer <token>
+```
+
+- `POST /api/reports`: solo ciudadano.
+- `PATCH /api/reports/:id/assignment`: solo administrador.
+- `PATCH /api/reports/:id/status`: administrador o tecnico asignado.
+- `GET /api/reports`: aplica automaticamente la visibilidad correspondiente al rol.
+
+### Usuarios y categorias
+
+```http
+GET    /api/users
+GET    /api/users/technicians
+POST   /api/users
+PATCH  /api/users/:id/status
+GET    /api/categories
+Authorization: Bearer <token>
+```
+
+La gestion de usuarios requiere rol `ADMINISTRADOR`. Las categorias pueden consultarse con cualquier usuario autenticado.
 
 ## Checklist de verificacion manual
 

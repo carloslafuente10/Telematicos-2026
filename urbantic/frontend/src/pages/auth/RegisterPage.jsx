@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import Icon from '../../components/ui/Icon.jsx';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -43,8 +44,11 @@ export default function RegisterPage() {
 
   return (
     <main className="auth-shell">
+      <div className="auth-backdrop" aria-hidden="true"><span /><span /><span /></div>
       <section className="auth-panel">
-        <h1>Crear cuenta ciudadana</h1>
+        <div className="auth-brand"><span className="brand-mark"><Icon name="building" size={30} /></span><span>URBANTIC</span></div>
+        <h1>Crear cuenta</h1>
+        <p className="auth-intro">Únete y ayuda a mejorar tu entorno urbano.</p>
         <form onSubmit={handleSubmit} className="form">
           <label>
             Nombre
@@ -55,7 +59,7 @@ export default function RegisterPage() {
             <input name="lastName" value={form.lastName} onChange={handleChange} required />
           </label>
           <label>
-            Telefono
+            Teléfono
             <input name="phone" value={form.phone} onChange={handleChange} />
           </label>
           <label>
@@ -63,16 +67,16 @@ export default function RegisterPage() {
             <input name="email" type="email" value={form.email} onChange={handleChange} required />
           </label>
           <label>
-            Password
-            <input name="password" type="password" value={form.password} onChange={handleChange} required />
+            Contraseña
+            <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Mínimo 8 caracteres" required />
           </label>
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" disabled={submitting}>
+          <button className="button button-primary button-full" type="submit" disabled={submitting}>
             {submitting ? 'Registrando...' : 'Registrarme'}
           </button>
         </form>
-        <p>
-          Ya tienes cuenta? <Link to="/login">Ingresar</Link>
+        <p className="auth-switch">
+          ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
         </p>
       </section>
     </main>
