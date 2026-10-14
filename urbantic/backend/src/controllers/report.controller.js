@@ -28,6 +28,13 @@ async function assign(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function updateClassification(req, res, next) {
+  try {
+    const report = await reportService.updateClassification(req.user, req.params.id, req.body);
+    res.json({ success: true, message: 'Reporte clasificado y priorizado correctamente.', data: { report } });
+  } catch (error) { next(error); }
+}
+
 async function updateStatus(req, res, next) {
   try {
     const report = await reportService.updateStatus(req.user, req.params.id, req.body);
@@ -35,4 +42,18 @@ async function updateStatus(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { list, getById, create, assign, updateStatus };
+async function decide(req, res, next) {
+  try {
+    const report = await reportService.decide(req.user, req.params.id, req.body);
+    res.json({ success: true, message: 'Decisión registrada correctamente.', data: { report } });
+  } catch (error) { next(error); }
+}
+
+async function stats(req, res, next) {
+  try {
+    const statsData = await reportService.stats(req.user);
+    res.json({ success: true, message: 'Estadísticas obtenidas correctamente.', data: { stats: statsData } });
+  } catch (error) { next(error); }
+}
+
+module.exports = { list, getById, create, assign, updateClassification, updateStatus, decide, stats };

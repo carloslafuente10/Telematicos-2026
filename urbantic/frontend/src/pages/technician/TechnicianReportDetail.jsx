@@ -5,64 +5,90 @@ import { useReports } from '../../context/ReportsContext.jsx';
 import ReportSummary from '../../components/reports/ReportSummary.jsx';
 import Icon from '../../components/ui/Icon.jsx';
 
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function TechnicianReportDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const { getReport, updateReportStatus, loading } = useReports();
   const report = getReport(id);
-  const [status, setStatus] = useState(report?.status || 'ASIGNADO');
-  const [observations, setObservations] = useState(report?.observations || '');
-  const [evidence, setEvidence] = useState(report?.evidence || null);
-  const [evidenceName, setEvidenceName] = useState('');
+  const [observations, setObservations] = useState('');
+  const [evidenceImages, setEvidenceImages] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!report) return;
-    setStatus(report.status);
     setObservations(report.observations || '');
-    setEvidence(report.evidence || null);
-  }, [report?.id, report?.status, report?.observations, report?.evidence]);
+    setEvidenceImages(report.evidenceImages?.length ? report.evidenceImages : (report.evidence ? [report.evidence] : []));
+  }, [report?.id, report?.observations, report?.evidence, report?.evidenceImages]);
 
   if (loading) return <div className="screen-message inline-screen">Cargando tarea...</div>;
-  if (!report || report.assignedTo !== user.id) return <Navigate to="/tecnico/tareas" replace />;
+  if (!report || Number(report.assignedTo) !== Number(user.id)) return <Navigate to="/tecnico/tareas" replace />;
 
-  function handleEvidence(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage('La evidencia debe pesar menos de 5 MB.');
+  async function handleEvidence(event) {
+    const selectedFiles = Array.from(event.target.files || []);
+    setError('');
+    if (!selectedFiles.length) return;
+    if (evidenceImages.length + selectedFiles.length > 5) {
+      setError('Solo puedes adjuntar hasta 5 fotografías.');
+      event.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setEvidence(reader.result);
-      setEvidenceName(file.name);
-    };
-    reader.readAsDataURL(file);
+    if (selectedFiles.some((file) => !['image/png', 'image/jpeg'].includes(file.type))) {
+      setError('Todas las evidencias deben ser imágenes PNG o JPG.');
+      event.target.value = '';
+      return;
+    }
+    if (selectedFiles.some((file) => file.size > 5 * 1024 * 1024)) {
+      setError('Cada fotografía debe pesar menos de 5 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const images = await Promise.all(selectedFiles.map(readImage));
+      setEvidenceImages((current) => [...current, ...images]);
+    } catch {
+      setError('No se pudieron leer las fotografías seleccionadas.');
+    }
+    event.target.value = '';
   }
 
-  async function saveChanges(event) {
-    event.preventDefault();
+  async function startWork() {
+    setSaving(true);
     setMessage('');
     setError('');
     try {
-      await updateReportStatus(report.id, { status, observations, evidence });
-      setMessage('Cambios guardados correctamente.');
+      await updateReportStatus(report.id, { status: 'EN_PROCESO' });
+      setMessage('Trabajo iniciado. El reporte ahora está en proceso.');
     } catch (apiError) {
-      setError(apiError.response?.data?.message || 'No se pudieron guardar los cambios.');
+      setError(apiError.response?.data?.message || 'No se pudo iniciar el trabajo.');
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function closeReport() {
+  async function resolveReport(event) {
+    event.preventDefault();
+    setSaving(true);
     setMessage('');
     setError('');
     try {
-      await updateReportStatus(report.id, { status: 'RESUELTO', observations, evidence });
-      setStatus('RESUELTO');
-      setMessage('El reporte fue marcado como resuelto.');
+      await updateReportStatus(report.id, { status: 'RESUELTO', observations, evidenceImages });
+      setMessage('Reporte marcado como resuelto y enviado para validación.');
     } catch (apiError) {
-      setError(apiError.response?.data?.message || 'No se pudo cerrar el reporte.');
+      setError(apiError.response?.data?.message || 'No se pudo resolver el reporte.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -74,38 +100,68 @@ export default function TechnicianReportDetail() {
       <div className="technician-detail-grid">
         <section className="surface-card detail-card">
           <ReportSummary report={report} />
-          {report.evidence && (
+          {report.observations && (
+            <div className="observation-card"><Icon name="tasks" size={20} /><div><strong>Observación técnica</strong><p>{report.observations}</p></div></div>
+          )}
+          {isFinished && evidenceImages.length > 0 && (
             <div className="resolution-evidence">
               <span className="eyebrow">Evidencia de resolución</span>
-              <img src={report.evidence} alt="Evidencia de resolución" />
+              <div className="evidence-gallery">
+                {evidenceImages.map((image, index) => <img src={image} alt={`Evidencia ${index + 1}`} key={`${report.id}-${index}`} />)}
+              </div>
             </div>
           )}
         </section>
 
-        <form className="surface-card update-panel" onSubmit={saveChanges}>
-          <div className="panel-heading"><span className="panel-icon orange"><Icon name="tasks" /></span><div><span className="eyebrow">Atención técnica</span><h2>{isFinished ? 'Reporte resuelto' : 'Actualizar estado'}</h2></div></div>
-          <label>Estado
-            <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="ASIGNADO">Asignado</option>
-              <option value="EN_PROCESO">En proceso</option>
-              <option value="RESUELTO">Resuelto</option>
-            </select>
-          </label>
-          <label>Observación
-            <textarea value={observations} onChange={(event) => setObservations(event.target.value)} rows="5" placeholder="Describe el trabajo realizado o el avance..." required />
-          </label>
-          <span className="field-label">Evidencia de resolución</span>
-          <label className={`upload-zone upload-zone-small ${evidence ? 'has-image' : ''}`}>
-            {evidence ? <img src={evidence} alt="Vista previa de evidencia" /> : <Icon name="camera" size={34} />}
-            <strong>{evidenceName || (evidence ? 'Evidencia cargada' : 'Agregar fotografía')}</strong>
-            <small>PNG o JPG · máximo 5 MB</small>
-            <input type="file" accept="image/png,image/jpeg" onChange={handleEvidence} />
-          </label>
-          {message && <p className="form-success"><Icon name="check" size={16} /> {message}</p>}
-          {error && <p className="form-error">{error}</p>}
-          <button className="button button-dark button-full" type="submit">Guardar cambios</button>
-          {!isFinished && <button className="button button-success button-full" type="button" onClick={closeReport}><Icon name="check" size={17} /> Cerrar como resuelto</button>}
-        </form>
+        {report.status === 'ASIGNADO' && (
+          <section className="surface-card update-panel start-work-panel">
+            <div className="panel-heading"><span className="panel-icon orange"><Icon name="tasks" /></span><div><span className="eyebrow">Nueva asignación</span><h2>Iniciar atención</h2></div></div>
+            <p>Cuando estés listo para trabajar en esta incidencia, inicia la atención. El estado cambiará a “En proceso”.</p>
+            {message && <p className="form-success"><Icon name="check" size={16} /> {message}</p>}
+            {error && <p className="form-error">{error}</p>}
+            <button className="button button-primary button-full" type="button" onClick={startWork} disabled={saving}><Icon name="tasks" size={17} /> {saving ? 'Iniciando...' : 'Iniciar trabajo'}</button>
+          </section>
+        )}
+
+        {report.status === 'EN_PROCESO' && (
+          <form className="surface-card update-panel" onSubmit={resolveReport}>
+            <div className="panel-heading"><span className="panel-icon orange"><Icon name="check" /></span><div><span className="eyebrow">Trabajo en curso</span><h2>Registrar solución</h2></div></div>
+            <label>Observación técnica
+              <textarea value={observations} onChange={(event) => setObservations(event.target.value)} rows="5" minLength="10" placeholder="Describe el trabajo realizado y el resultado..." required />
+            </label>
+            <span className="field-label">Fotos de la solución ({evidenceImages.length}/5)</span>
+            {evidenceImages.length > 0 && (
+              <div className="evidence-preview-grid">
+                {evidenceImages.map((image, index) => (
+                  <div className="evidence-preview" key={`preview-${index}`}>
+                    <img src={image} alt={`Vista previa ${index + 1}`} />
+                    <button type="button" aria-label={`Quitar evidencia ${index + 1}`} onClick={() => setEvidenceImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}><Icon name="close" size={14} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {evidenceImages.length < 5 && (
+              <label className="upload-zone upload-zone-small multi-upload">
+                <Icon name="camera" size={34} />
+                <strong>Agregar fotografías</strong>
+                <small>Hasta 5 archivos PNG o JPG · máximo 5 MB cada uno</small>
+                <input type="file" multiple accept="image/png,image/jpeg" onChange={handleEvidence} />
+              </label>
+            )}
+            {message && <p className="form-success"><Icon name="check" size={16} /> {message}</p>}
+            {error && <p className="form-error">{error}</p>}
+            <button className="button button-success button-full" type="submit" disabled={saving || observations.trim().length < 10 || evidenceImages.length === 0}><Icon name="check" size={17} /> {saving ? 'Guardando...' : 'Marcar como resuelto'}</button>
+          </form>
+        )}
+
+        {isFinished && (
+          <section className="surface-card update-panel finished-panel">
+            <span className="panel-icon success-icon"><Icon name="check" /></span>
+            <h2>{report.status === 'CERRADO' ? 'Reporte cerrado' : 'Solución enviada'}</h2>
+            <p>{report.status === 'CERRADO' ? 'El administrador validó la solución y concluyó la atención.' : 'La solución está pendiente de validación administrativa.'}</p>
+            {message && <p className="form-success"><Icon name="check" size={16} /> {message}</p>}
+          </section>
+        )}
       </div>
     </div>
   );

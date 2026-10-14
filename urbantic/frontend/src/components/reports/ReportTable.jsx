@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import StatusBadge from '../ui/StatusBadge.jsx';
+import PriorityBadge from '../ui/PriorityBadge.jsx';
 import Icon from '../ui/Icon.jsx';
 
-export default function ReportTable({ reports, getViewPath, showZone = true, emptyMessage = 'No hay reportes para mostrar.' }) {
+export default function ReportTable({ reports, getViewPath, showZone = true, showPriority = false, emptyMessage = 'No hay reportes para mostrar.' }) {
   if (!reports.length) {
     return <div className="empty-state"><Icon name="reports" size={32} /><p>{emptyMessage}</p></div>;
   }
@@ -16,6 +17,7 @@ export default function ReportTable({ reports, getViewPath, showZone = true, emp
             <th>Título</th>
             <th>Tipo</th>
             {showZone && <th>Zona</th>}
+            {showPriority && <th>Prioridad</th>}
             <th>Estado</th>
             <th>Fecha</th>
             <th><span className="sr-only">Acciones</span></th>
@@ -28,9 +30,10 @@ export default function ReportTable({ reports, getViewPath, showZone = true, emp
               <td data-label="Título"><strong>{report.title}</strong></td>
               <td data-label="Tipo">{report.type}</td>
               {showZone && <td data-label="Zona">{report.zone}</td>}
+              {showPriority && <td data-label="Prioridad"><PriorityBadge priority={report.priority} /></td>}
               <td data-label="Estado"><StatusBadge status={report.status} /></td>
               <td data-label="Fecha">{report.date}</td>
-              <td className="table-action">
+              <td className="table-action" data-label="Acciones">
                 <Link className="button button-small button-light" to={getViewPath(report)}>
                   Ver <Icon name="arrow" size={14} />
                 </Link>

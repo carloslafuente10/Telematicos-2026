@@ -5,6 +5,7 @@ import { useReports } from '../../context/ReportsContext.jsx';
 import { REPORT_TYPES } from '../../data/reportData.js';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Icon from '../../components/ui/Icon.jsx';
+import LocationPickerMap from '../../components/reports/LocationPickerMap.jsx';
 
 export default function CreateReportPage() {
   const navigate = useNavigate();
@@ -65,6 +66,17 @@ export default function CreateReportPage() {
     );
   }
 
+  function handleMapLocation({ latitude, longitude, address }) {
+    setForm((current) => ({
+      ...current,
+      location: address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+      zone: current.zone || 'Ubicación seleccionada',
+      latitude,
+      longitude
+    }));
+    setLocationMessage('Ubicación seleccionada correctamente en el mapa.');
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitting(true);
@@ -111,13 +123,12 @@ export default function CreateReportPage() {
             <Icon name="pin" size={17} /> {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación'}
           </button>
           {locationMessage && <p className="form-helper">{locationMessage}</p>}
-          <div className="mini-map" aria-label="Vista previa de ubicación">
-            <div className="map-grid" />
-            <span className="map-road road-one" />
-            <span className="map-road road-two" />
-            <span className="map-pin"><Icon name="pin" size={26} /></span>
-            <small>{form.location || 'Selecciona una ubicación'}</small>
-          </div>
+          <LocationPickerMap
+            latitude={form.latitude}
+            longitude={form.longitude}
+            onLocationChange={handleMapLocation}
+          />
+          <p className="map-helper">Usa tu ubicación, toca el mapa o arrastra el marcador para ajustar el punto.</p>
         </div>
 
         <div className="upload-column">

@@ -30,7 +30,7 @@ export default function DashboardTecnico() {
 
       <section className="surface-card">
         <PageHeader eyebrow="Asignaciones" title="Mis reportes asignados" />
-        <ReportTable reports={assignedReports.slice(0, 5)} getViewPath={(report) => `/tecnico/tareas/${report.id}`} />
+        <ReportTable reports={assignedReports.slice(0, 5)} showPriority getViewPath={(report) => `/tecnico/tareas/${report.id}`} />
       </section>
     </div>
   );

@@ -9,7 +9,7 @@ const roleLinks = {
     { to: '/ciudadano/reportes/nuevo', label: 'Crear reporte', icon: 'add' }
   ],
   ADMINISTRADOR: [
-    { to: '/admin', label: 'Inicio', icon: 'home', end: true },
+    { to: '/admin', label: 'Panel y estadísticas', icon: 'home', end: true },
     { to: '/admin/reportes', label: 'Reportes', icon: 'reports' },
     { to: '/admin/usuarios', label: 'Usuarios', icon: 'users' },
     { to: '/admin/categorias', label: 'Categorías', icon: 'categories' }
@@ -40,7 +40,7 @@ export default function Sidebar() {
       </nav>
       <div className="sidebar-footer">
         <span>URBANTIC</span>
-        <small>Sprint 2 · 2026</small>
+        <small>Sprint 3 · 2026</small>
       </div>
     </aside>
   );

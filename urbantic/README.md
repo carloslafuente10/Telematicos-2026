@@ -1,6 +1,6 @@
 # URBANTIC
 
-Sistema web de reporte y seguimiento de problemas urbanos. El proyecto incluye la base funcional del Sprint 1 y la implementacion full stack del Sprint 2.
+Sistema web de reporte y seguimiento de problemas urbanos. El proyecto incluye la implementacion full stack de los Sprints 1, 2 y 3.
 
 ## Alcance Sprint 1
 
@@ -27,9 +27,24 @@ Sistema web de reporte y seguimiento de problemas urbanos. El proyecto incluye l
 
 El ciudadano solo puede consultar sus propios reportes, el tecnico solo puede operar los que tiene asignados y el administrador puede consultar, asignar y gestionar todos los reportes.
 
+## Alcance Sprint 3
+
+- Priorizacion de reportes en niveles Baja, Media, Alta y Critica.
+- Correccion administrativa de la categoria antes de asignar.
+- Asignacion de tecnicos mostrando su carga activa.
+- Bandeja tecnica ordenada por prioridad.
+- Inicio de trabajo con transicion controlada a `EN_PROCESO`.
+- Resolucion con observacion tecnica obligatoria y hasta 5 fotografias.
+- Validacion administrativa para cerrar un reporte resuelto.
+- Rechazo de reportes improcedentes con motivo obligatorio.
+- Panel de estadisticas por estado y categoria.
+- Mapa interactivo de incidencias con Leaflet y OpenStreetMap.
+- Historial de asignaciones y estados persistido en PostgreSQL.
+- Validacion de permisos y transiciones de estado en el backend.
+
 ## Stack
 
-- Frontend: React 18, Vite, JavaScript, Axios, React Router.
+- Frontend: React 18, Vite, JavaScript, Axios, React Router, Leaflet.
 - Backend: Node.js 20, Express, PostgreSQL, JWT, bcrypt.
 - Base de datos: PostgreSQL 16.
 - Contenedores: Docker y Docker Compose.
@@ -171,16 +186,22 @@ Solo se aceptan `firstName`, `lastName` y `phone`. Cualquier otro campo enviado 
 
 ```http
 GET    /api/reports
+GET    /api/reports/stats
 GET    /api/reports/:id
 POST   /api/reports
+PATCH  /api/reports/:id/classification
 PATCH  /api/reports/:id/assignment
 PATCH  /api/reports/:id/status
+PATCH  /api/reports/:id/decision
 Authorization: Bearer <token>
 ```
 
 - `POST /api/reports`: solo ciudadano.
+- `GET /api/reports/stats`: solo administrador.
+- `PATCH /api/reports/:id/classification`: solo administrador; categoria y prioridad.
 - `PATCH /api/reports/:id/assignment`: solo administrador.
-- `PATCH /api/reports/:id/status`: administrador o tecnico asignado.
+- `PATCH /api/reports/:id/status`: solo tecnico asignado; inicia o resuelve el trabajo.
+- `PATCH /api/reports/:id/decision`: solo administrador; cierra o rechaza.
 - `GET /api/reports`: aplica automaticamente la visibilidad correspondiente al rol.
 
 ### Usuarios y categorias

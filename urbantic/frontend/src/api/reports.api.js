@@ -20,7 +20,22 @@ export async function assign(id, technicianId) {
   return response.data.data.report;
 }
 
+export async function updateClassification(id, payload) {
+  const response = await api.patch(`/reports/${id}/classification`, payload);
+  return response.data.data.report;
+}
+
 export async function updateStatus(id, payload) {
   const response = await api.patch(`/reports/${id}/status`, payload);
   return response.data.data.report;
+}
+
+export async function decide(id, payload) {
+  const response = await api.patch(`/reports/${id}/decision`, payload);
+  return response.data.data.report;
+}
+
+export async function getStats() {
+  const response = await api.get('/reports/stats');
+  return response.data.data.stats;
 }

@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useReports } from '../../context/ReportsContext.jsx';
-import { REPORT_TYPES } from '../../data/reportData.js';
+import { REPORT_PRIORITIES, REPORT_STATUSES, REPORT_TYPES } from '../../data/reportData.js';
 import ReportTable from '../../components/reports/ReportTable.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Icon from '../../components/ui/Icon.jsx';
 
 export default function ReportsAdmin() {
   const { reports } = useReports();
-  const [filters, setFilters] = useState({ type: 'TODOS', status: 'TODOS', search: '' });
+  const [filters, setFilters] = useState({ type: 'TODOS', status: 'TODOS', priority: 'TODAS', search: '' });
 
   const filteredReports = useMemo(() => reports.filter((report) => {
     const term = filters.search.trim().toLowerCase();
     return (filters.type === 'TODOS' || report.type === filters.type)
       && (filters.status === 'TODOS' || report.status === filters.status)
+      && (filters.priority === 'TODAS' || report.priority === filters.priority)
       && (!term || `${report.id} ${report.title} ${report.location} ${report.zone}`.toLowerCase().includes(term));
   }), [filters, reports]);
 
@@ -22,9 +23,9 @@ export default function ReportsAdmin() {
 
   return (
     <section className="surface-card page-card">
-      <PageHeader eyebrow="Operaciones" title="Todos los reportes" description="Filtra, revisa y asigna las incidencias recibidas por la ciudadanía." />
+      <PageHeader eyebrow="Operaciones" title="Todos los reportes" description="Filtra, prioriza y coordina las incidencias recibidas por la ciudadanía." />
 
-      <div className="filter-bar admin-filters">
+      <div className="filter-bar admin-filters sprint3-filters">
         <label>Tipo
           <select name="type" value={filters.type} onChange={setFilter}>
             <option value="TODOS">Todos</option>
@@ -34,11 +35,13 @@ export default function ReportsAdmin() {
         <label>Estado
           <select name="status" value={filters.status} onChange={setFilter}>
             <option value="TODOS">Todos</option>
-            <option value="EN_REVISION">En revisión</option>
-            <option value="ASIGNADO">Asignado</option>
-            <option value="EN_PROCESO">En proceso</option>
-            <option value="RESUELTO">Resuelto</option>
-            <option value="CERRADO">Cerrado</option>
+            {Object.entries(REPORT_STATUSES).map(([value, item]) => <option value={value} key={value}>{item.label}</option>)}
+          </select>
+        </label>
+        <label>Prioridad
+          <select name="priority" value={filters.priority} onChange={setFilter}>
+            <option value="TODAS">Todas</option>
+            {Object.entries(REPORT_PRIORITIES).map(([value, item]) => <option value={value} key={value}>{item.label}</option>)}
           </select>
         </label>
         <label className="search-field">Buscar
@@ -47,7 +50,7 @@ export default function ReportsAdmin() {
         <span className="result-count">{filteredReports.length} reportes</span>
       </div>
 
-      <ReportTable reports={filteredReports} getViewPath={(report) => `/admin/reportes/${report.id}`} />
+      <ReportTable reports={filteredReports} showPriority getViewPath={(report) => `/admin/reportes/${report.id}`} />
     </section>
   );
 }

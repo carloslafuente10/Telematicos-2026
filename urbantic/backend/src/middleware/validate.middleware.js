@@ -35,6 +35,10 @@ function validate(schema) {
         errors.push({ field, message: 'Debe ser verdadero o falso.' });
       }
 
+      if (rules.type === 'array' && !Array.isArray(value)) {
+        errors.push({ field, message: 'Debe ser una lista.' });
+      }
+
       if (rules.email && !emailRegex.test(value)) {
         errors.push({ field, message: 'Debe ser un correo valido.' });
       }
@@ -98,10 +102,20 @@ const statusSchema = {
   status: {
     required: true,
     type: 'string',
-    enum: ['CREADO', 'EN_REVISION', 'ASIGNADO', 'EN_PROCESO', 'RESUELTO', 'CERRADO']
+    enum: ['EN_PROCESO', 'RESUELTO']
   },
   observations: { required: false, type: 'string', max: 3000 },
-  evidence: { required: false, type: 'string', max: 7000000 }
+  evidenceImages: { required: false, type: 'array' }
+};
+
+const classificationSchema = {
+  categoryId: { required: true, type: 'number' },
+  priority: { required: true, type: 'string', enum: ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'] }
+};
+
+const decisionSchema = {
+  decision: { required: true, type: 'string', enum: ['CERRADO', 'RECHAZADO'] },
+  reason: { required: false, type: 'string', max: 3000 }
 };
 
 const managedUserSchema = {
@@ -123,6 +137,8 @@ module.exports = {
   reportSchema,
   assignmentSchema,
   statusSchema,
+  classificationSchema,
+  decisionSchema,
   managedUserSchema,
   userStatusSchema
 };

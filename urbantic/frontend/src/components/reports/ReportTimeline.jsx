@@ -10,6 +10,15 @@ const steps = [
 ];
 
 export default function ReportTimeline({ status, date }) {
+  if (status === 'RECHAZADO') {
+    return (
+      <section className="tracking-section rejected-tracking">
+        <span className="timeline-dot rejected-dot"><Icon name="close" size={13} /></span>
+        <div><span className="eyebrow">Proceso concluido</span><h2>Reporte rechazado</h2><p>El administrador determinó que la incidencia no corresponde o es improcedente.</p></div>
+      </section>
+    );
+  }
+
   const currentIndex = Math.max(steps.findIndex((step) => step.status === status), 0);
 
   return (

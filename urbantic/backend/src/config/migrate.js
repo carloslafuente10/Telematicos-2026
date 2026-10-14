@@ -1,6 +1,6 @@
 const db = require('./database');
 
-const sprint2Schema = `
+const applicationSchema = `
   CREATE TABLE IF NOT EXISTS report_categories (
     id SERIAL PRIMARY KEY,
     code VARCHAR(40) NOT NULL UNIQUE,
@@ -42,11 +42,43 @@ const sprint2Schema = `
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  ALTER TABLE reports ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'MEDIA';
+  ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolution_images JSONB NOT NULL DEFAULT '[]'::jsonb;
+  ALTER TABLE reports ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+  ALTER TABLE reports ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP;
+
+  ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_status_check;
+  ALTER TABLE reports ADD CONSTRAINT reports_status_check
+    CHECK (status IN ('CREADO', 'EN_REVISION', 'ASIGNADO', 'EN_PROCESO', 'RESUELTO', 'CERRADO', 'RECHAZADO'));
+  ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_priority_check;
+  ALTER TABLE reports ADD CONSTRAINT reports_priority_check
+    CHECK (priority IN ('BAJA', 'MEDIA', 'ALTA', 'CRITICA'));
+
+  ALTER TABLE report_status_history DROP CONSTRAINT IF EXISTS report_status_history_status_check;
+  ALTER TABLE report_status_history ADD CONSTRAINT report_status_history_status_check
+    CHECK (status IN ('CREADO', 'EN_REVISION', 'ASIGNADO', 'EN_PROCESO', 'RESUELTO', 'CERRADO', 'RECHAZADO'));
+
+  CREATE TABLE IF NOT EXISTS report_assignments (
+    id SERIAL PRIMARY KEY,
+    report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    technician_id INTEGER NOT NULL REFERENCES users(id),
+    assigned_by INTEGER NOT NULL REFERENCES users(id),
+    assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS urbantic_migrations (
+    code VARCHAR(80) PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS reports_citizen_id_index ON reports(citizen_id);
   CREATE INDEX IF NOT EXISTS reports_assigned_to_index ON reports(assigned_to);
   CREATE INDEX IF NOT EXISTS reports_category_id_index ON reports(category_id);
   CREATE INDEX IF NOT EXISTS reports_status_index ON reports(status);
+  CREATE INDEX IF NOT EXISTS reports_priority_index ON reports(priority);
   CREATE INDEX IF NOT EXISTS report_history_report_id_index ON report_status_history(report_id);
+  CREATE INDEX IF NOT EXISTS report_assignments_report_id_index ON report_assignments(report_id);
+  CREATE INDEX IF NOT EXISTS report_assignments_technician_id_index ON report_assignments(technician_id);
 
   INSERT INTO report_categories (code, name, color)
   VALUES
@@ -121,6 +153,57 @@ const sprint2Schema = `
     SELECT 1 FROM report_status_history h WHERE h.report_id = r.id
   );
 
+  DO $$
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM urbantic_migrations WHERE code = 'sprint3_demo_priorities') THEN
+      UPDATE reports
+      SET priority = CASE id
+        WHEN 12 THEN 'CRITICA'
+        WHEN 11 THEN 'ALTA'
+        WHEN 10 THEN 'MEDIA'
+        WHEN 9 THEN 'ALTA'
+        WHEN 8 THEN 'CRITICA'
+        ELSE priority
+      END
+      WHERE id IN (5, 8, 9, 10, 11, 12);
+
+      INSERT INTO urbantic_migrations (code) VALUES ('sprint3_demo_priorities');
+    END IF;
+  END $$;
+
+  UPDATE reports
+  SET latitude = COALESCE(latitude, CASE id
+    WHEN 12 THEN -17.37410
+    WHEN 11 THEN -17.39370
+    WHEN 10 THEN -17.38610
+    WHEN 9 THEN -17.39730
+    WHEN 8 THEN -17.41020
+    WHEN 5 THEN -17.38980
+  END),
+  longitude = COALESCE(longitude, CASE id
+    WHEN 12 THEN -66.15120
+    WHEN 11 THEN -66.18840
+    WHEN 10 THEN -66.16750
+    WHEN 9 THEN -66.15680
+    WHEN 8 THEN -66.16890
+    WHEN 5 THEN -66.16040
+  END)
+  WHERE id IN (5, 8, 9, 10, 11, 12);
+
+  INSERT INTO report_assignments (report_id, technician_id, assigned_by, assigned_at)
+  SELECT r.id, r.assigned_to, admin_user.id, r.created_at
+  FROM reports r
+  CROSS JOIN LATERAL (
+    SELECT u.id
+    FROM users u
+    INNER JOIN roles role ON role.id = u.role_id
+    WHERE role.code = 'ADMINISTRADOR'
+    ORDER BY u.id
+    LIMIT 1
+  ) admin_user
+  WHERE r.assigned_to IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM report_assignments a WHERE a.report_id = r.id);
+
   SELECT setval(
     pg_get_serial_sequence('reports', 'id'),
     GREATEST(COALESCE((SELECT MAX(id) FROM reports), 1), 1),
@@ -129,7 +212,7 @@ const sprint2Schema = `
 `;
 
 async function runMigrations() {
-  await db.query(sprint2Schema);
+  await db.query(applicationSchema);
   console.log('URBANTIC database migrations ready');
 }
 

@@ -73,7 +73,7 @@ export default function UsersAdmin() {
                 <td data-label="Rol">{user.role}</td>
                 <td data-label="Correo">{user.email}</td>
                 <td data-label="Estado"><span className={`status-badge ${user.active ? 'status-success' : 'status-danger'}`}>{user.active ? 'Activo' : 'Inactivo'}</span></td>
-                <td className="table-action"><button className="button button-small button-light" type="button" onClick={() => toggleUser(user)}>{user.active ? 'Desactivar' : 'Activar'}</button></td>
+                <td className="table-action" data-label="Acciones"><button className="button button-small button-light" type="button" onClick={() => toggleUser(user)}>{user.active ? 'Desactivar' : 'Activar'}</button></td>
               </tr>
             ))}
           </tbody>

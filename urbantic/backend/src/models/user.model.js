@@ -125,11 +125,15 @@ async function listTechnicians() {
         CONCAT(u.first_name, ' ', u.last_name) AS name,
         u.email,
         u.is_active AS active,
-        COALESCE(u.phone, 'Servicios urbanos') AS specialty
+        COALESCE(u.phone, 'Servicios urbanos') AS specialty,
+        COUNT(report.id) FILTER (WHERE report.status IN ('ASIGNADO', 'EN_PROCESO'))::INTEGER AS workload,
+        COUNT(report.id) FILTER (WHERE report.status IN ('ASIGNADO', 'EN_PROCESO') AND report.priority = 'CRITICA')::INTEGER AS "criticalWorkload"
       FROM users u
-      INNER JOIN roles r ON r.id = u.role_id
-      WHERE r.code = 'TECNICO' AND u.is_active = TRUE
-      ORDER BY u.first_name, u.last_name
+      INNER JOIN roles role ON role.id = u.role_id
+      LEFT JOIN reports report ON report.assigned_to = u.id
+      WHERE role.code = 'TECNICO' AND u.is_active = TRUE
+      GROUP BY u.id
+      ORDER BY workload ASC, u.first_name, u.last_name
     `
   );
   return result.rows;

@@ -12,9 +12,21 @@ export const REPORT_STATUSES = {
   ASIGNADO: { label: 'Asignado', tone: 'info' },
   EN_PROCESO: { label: 'En proceso', tone: 'orange' },
   RESUELTO: { label: 'Resuelto', tone: 'success' },
-  CERRADO: { label: 'Cerrado', tone: 'neutral' }
+  CERRADO: { label: 'Cerrado', tone: 'neutral' },
+  RECHAZADO: { label: 'Rechazado', tone: 'danger' }
+};
+
+export const REPORT_PRIORITIES = {
+  BAJA: { label: 'Baja', tone: 'low' },
+  MEDIA: { label: 'Media', tone: 'medium' },
+  ALTA: { label: 'Alta', tone: 'high' },
+  CRITICA: { label: 'Crítica', tone: 'critical' }
 };
 
 export function getStatus(status) {
   return REPORT_STATUSES[status] || REPORT_STATUSES.CREADO;
+}
+
+export function getPriority(priority) {
+  return REPORT_PRIORITIES[priority] || REPORT_PRIORITIES.MEDIA;
 }

@@ -4,6 +4,7 @@ const reportFields = `
   LPAD(r.id::text, 4, '0') AS id,
   r.citizen_id AS "citizenId",
   r.assigned_to AS "assignedTo",
+  r.category_id AS "categoryId",
   r.title,
   r.description,
   r.location,
@@ -12,7 +13,10 @@ const reportFields = `
   r.longitude,
   r.image_data AS image,
   r.evidence_data AS evidence,
+  r.resolution_images AS "evidenceImages",
   r.observations,
+  r.priority,
+  r.rejection_reason AS "rejectionReason",
   r.status,
   c.name AS type,
   c.code AS "categoryCode",
@@ -20,6 +24,7 @@ const reportFields = `
   r.created_at AS "createdAt",
   r.updated_at AS "updatedAt",
   r.resolved_at AS "resolvedAt",
+  r.closed_at AS "closedAt",
   CONCAT(citizen.first_name, ' ', citizen.last_name) AS "citizenName",
   CASE WHEN technician.id IS NULL THEN NULL
     ELSE CONCAT(technician.first_name, ' ', technician.last_name) END AS "technicianName"
@@ -58,6 +63,11 @@ async function list(actor, filters = {}) {
     where.push(`r.status = $${values.length}`);
   }
 
+  if (filters.priority) {
+    values.push(filters.priority);
+    where.push(`r.priority = $${values.length}`);
+  }
+
   if (filters.search) {
     values.push(`%${filters.search}%`);
     where.push(`(
@@ -74,7 +84,10 @@ async function list(actor, filters = {}) {
       FROM reports r
       ${reportJoins}
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY r.created_at DESC, r.id DESC
+      ORDER BY
+        CASE r.priority WHEN 'CRITICA' THEN 1 WHEN 'ALTA' THEN 2 WHEN 'MEDIA' THEN 3 ELSE 4 END,
+        r.created_at DESC,
+        r.id DESC
     `,
     values
   );
@@ -200,22 +213,75 @@ async function assign(reportId, technicianId, changedBy) {
       `
         UPDATE reports
         SET assigned_to = $2,
-            status = CASE WHEN status IN ('CREADO', 'EN_REVISION') THEN 'ASIGNADO' ELSE status END,
+            status = 'ASIGNADO',
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1
+        WHERE id = $1 AND status IN ('CREADO', 'EN_REVISION', 'ASIGNADO')
         RETURNING status
       `,
       [reportId, technicianId]
     );
     if (!result.rows[0]) {
       await client.query('ROLLBACK');
-      return { reason: 'report' };
+      return { reason: 'state' };
     }
+
+    await client.query(
+      `INSERT INTO report_assignments (report_id, technician_id, assigned_by)
+       VALUES ($1, $2, $3)`,
+      [reportId, technicianId, changedBy]
+    );
 
     await client.query(
       `INSERT INTO report_status_history (report_id, status, changed_by, observation)
        VALUES ($1, $2, $3, 'Técnico asignado al reporte')`,
       [reportId, result.rows[0].status, changedBy]
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return { report: await findById(reportId) };
+}
+
+async function updateClassification(reportId, payload, changedBy) {
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const categoryResult = await client.query(
+      'SELECT id, name FROM report_categories WHERE id = $1 AND is_active = TRUE LIMIT 1',
+      [payload.categoryId]
+    );
+    if (!categoryResult.rows[0]) {
+      await client.query('ROLLBACK');
+      return { reason: 'category' };
+    }
+
+    const result = await client.query(
+      `
+        UPDATE reports
+        SET category_id = $2,
+            priority = $3,
+            status = 'EN_REVISION',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND status IN ('CREADO', 'EN_REVISION')
+        RETURNING id
+      `,
+      [reportId, payload.categoryId, payload.priority]
+    );
+    if (!result.rows[0]) {
+      await client.query('ROLLBACK');
+      return { reason: 'state' };
+    }
+
+    await client.query(
+      `INSERT INTO report_status_history (report_id, status, changed_by, observation)
+       VALUES ($1, 'EN_REVISION', $2, $3)`,
+      [reportId, changedBy, `Clasificado como ${categoryResult.rows[0].name} con prioridad ${payload.priority}`]
     );
     await client.query('COMMIT');
   } catch (error) {
@@ -250,6 +316,18 @@ async function updateStatus(reportId, actor, payload) {
       updates.push(`evidence_data = $${values.length}`);
     }
 
+    if (Object.prototype.hasOwnProperty.call(payload, 'evidenceImages')) {
+      values.push(JSON.stringify(payload.evidenceImages || []));
+      updates.push(`resolution_images = $${values.length}::jsonb`);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(payload, 'rejectionReason')) {
+      values.push(payload.rejectionReason || null);
+      updates.push(`rejection_reason = $${values.length}`);
+    }
+
+    updates.push(`closed_at = CASE WHEN $2::varchar IN ('CERRADO', 'RECHAZADO') THEN CURRENT_TIMESTAMP ELSE closed_at END`);
+
     let accessCondition = '';
     if (actor.role === 'TECNICO') {
       values.push(actor.id);
@@ -281,11 +359,53 @@ async function updateStatus(reportId, actor, payload) {
   return findById(reportId);
 }
 
+async function getStats() {
+  const [summaryResult, statusResult, categoryResult, priorityResult, locationResult] = await Promise.all([
+    db.query(`
+      SELECT
+        COUNT(*)::INTEGER AS total,
+        COUNT(*) FILTER (WHERE status = 'EN_REVISION')::INTEGER AS "inReview",
+        COUNT(*) FILTER (WHERE status IN ('ASIGNADO', 'EN_PROCESO'))::INTEGER AS "inProgress",
+        COUNT(*) FILTER (WHERE status IN ('RESUELTO', 'CERRADO'))::INTEGER AS resolved,
+        COUNT(*) FILTER (WHERE priority = 'CRITICA' AND status NOT IN ('CERRADO', 'RECHAZADO'))::INTEGER AS critical
+      FROM reports
+    `),
+    db.query(`SELECT status AS key, COUNT(*)::INTEGER AS value FROM reports GROUP BY status ORDER BY status`),
+    db.query(`
+      SELECT c.name AS key, c.color, COUNT(r.id)::INTEGER AS value
+      FROM report_categories c
+      LEFT JOIN reports r ON r.category_id = c.id
+      GROUP BY c.id
+      ORDER BY value DESC, c.name
+    `),
+    db.query(`SELECT priority AS key, COUNT(*)::INTEGER AS value FROM reports GROUP BY priority ORDER BY
+      CASE priority WHEN 'CRITICA' THEN 1 WHEN 'ALTA' THEN 2 WHEN 'MEDIA' THEN 3 ELSE 4 END`),
+    db.query(`
+      SELECT LPAD(r.id::text, 4, '0') AS id, r.title, r.latitude, r.longitude,
+        r.status, r.priority, c.name AS type, c.color
+      FROM reports r
+      INNER JOIN report_categories c ON c.id = r.category_id
+      WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL
+      ORDER BY r.created_at DESC
+    `)
+  ]);
+
+  return {
+    summary: summaryResult.rows[0],
+    byStatus: statusResult.rows,
+    byCategory: categoryResult.rows,
+    byPriority: priorityResult.rows,
+    locations: locationResult.rows
+  };
+}
+
 module.exports = {
   list,
   findById,
   getHistory,
   create,
   assign,
-  updateStatus
+  updateClassification,
+  updateStatus,
+  getStats
 };

@@ -69,8 +69,20 @@ export function ReportsProvider({ children }) {
     return report;
   }
 
+  async function classifyReport(id, classification) {
+    const report = await reportsApi.updateClassification(id, classification);
+    setReports((current) => current.map((item) => item.id === report.id ? report : item));
+    return report;
+  }
+
   async function updateReportStatus(id, changes) {
     const report = await reportsApi.updateStatus(id, changes);
+    setReports((current) => current.map((item) => item.id === report.id ? report : item));
+    return report;
+  }
+
+  async function decideReport(id, decision) {
+    const report = await reportsApi.decide(id, decision);
     setReports((current) => current.map((item) => item.id === report.id ? report : item));
     return report;
   }
@@ -82,7 +94,9 @@ export function ReportsProvider({ children }) {
     refreshReports,
     createReport,
     assignReport,
+    classifyReport,
     updateReportStatus,
+    decideReport,
     getReport: (id) => reports.find((report) => report.id === id)
   }), [reports, loading, error, isAuthenticated, loadedFor, scopeKey]);
 
