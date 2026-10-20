@@ -1,0 +1,21 @@
+# PostgreSQL is hosted separately on Neon Free.
+# Initialize it with urbantic/database/init/01_schema.sql before deploying.
+services:
+  - type: web
+    name: urbantic-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./urbantic/backend/Dockerfile
+    dockerContext: ./urbantic/backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: FRONTEND_URL
+        sync: false

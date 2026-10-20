@@ -51,6 +51,9 @@ El ciudadano solo puede consultar sus propios reportes, el tecnico solo puede op
 
 ## Instalacion
 
+Para publicar el proyecto con Vercel, Render y Neon, seguir la
+[guia de despliegue gratuito](DEPLOY.md).
+
 1. Clonar el repositorio.
 
 ```bash
