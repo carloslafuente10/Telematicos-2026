@@ -45,4 +45,18 @@ async function setStatus(actorId, rawId, active) {
   return user;
 }
 
-module.exports = { list, technicians, create, setStatus };
+async function setRole(actorId, rawId, role) {
+  const id = Number.parseInt(rawId, 10);
+  if (!Number.isInteger(id) || id <= 0) throw new AppError('Identificador de usuario inválido.', 400);
+  if (id === Number(actorId)) throw new AppError('No puedes cambiar tu propio rol.', 400);
+
+  const currentUser = await userModel.getRoleByUserId(id);
+  if (!currentUser) throw new AppError('Usuario no encontrado.', 404);
+  if (currentUser.role === 'ADMINISTRADOR' && role !== 'ADMINISTRADOR' && await userModel.countActiveAdministrators() <= 1) {
+    throw new AppError('Debe quedar al menos un administrador activo.', 400);
+  }
+
+  return userModel.setRole(id, role);
+}
+
+module.exports = { list, technicians, create, setStatus, setRole };

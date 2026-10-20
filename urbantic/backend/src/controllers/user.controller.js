@@ -28,4 +28,11 @@ async function setStatus(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { list, technicians, create, setStatus };
+async function setRole(req, res, next) {
+  try {
+    const user = await userService.setRole(req.user.sub, req.params.id, req.body.role);
+    res.json({ success: true, message: 'Rol del usuario actualizado.', data: { user } });
+  } catch (error) { next(error); }
+}
+
+module.exports = { list, technicians, create, setStatus, setRole };

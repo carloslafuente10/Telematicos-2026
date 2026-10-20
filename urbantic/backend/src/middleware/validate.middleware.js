@@ -129,6 +129,10 @@ const userStatusSchema = {
   active: { required: true, type: 'boolean' }
 };
 
+const userRoleSchema = {
+  role: { required: true, type: 'string', enum: ['CIUDADANO', 'TECNICO', 'ADMINISTRADOR'] }
+};
+
 module.exports = {
   validate,
   registerSchema,
@@ -140,5 +144,6 @@ module.exports = {
   classificationSchema,
   decisionSchema,
   managedUserSchema,
-  userStatusSchema
+  userStatusSchema,
+  userRoleSchema
 };

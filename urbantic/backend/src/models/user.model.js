@@ -161,6 +161,29 @@ async function setActive(id, active) {
   return result.rows[0] ? findById(result.rows[0].id) : null;
 }
 
+async function getRoleByUserId(id) {
+  const result = await db.query(
+    `SELECT r.code AS role FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE u.id = $1`,
+    [id]
+  );
+  return result.rows[0] || null;
+}
+
+async function countActiveAdministrators() {
+  const result = await db.query(
+    `SELECT COUNT(*)::INTEGER AS count FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE r.code = 'ADMINISTRADOR' AND u.is_active = TRUE`
+  );
+  return result.rows[0].count;
+}
+
+async function setRole(id, role) {
+  const result = await db.query(
+    `UPDATE users SET role_id = (SELECT id FROM roles WHERE code = $2), updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id`,
+    [id, role]
+  );
+  return result.rows[0] ? findById(result.rows[0].id) : null;
+}
+
 module.exports = {
   findByEmail,
   findById,
@@ -169,5 +192,8 @@ module.exports = {
   listAll,
   listTechnicians,
   createManaged,
-  setActive
+  setActive,
+  getRoleByUserId,
+  countActiveAdministrators,
+  setRole
 };

@@ -9,6 +9,7 @@ export default function UsersAdmin() {
   const [form, setForm] = useState({ name: '', email: '', role: 'CIUDADANO', password: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [savingRole, setSavingRole] = useState(null);
 
   useEffect(() => {
     usersApi.list()
@@ -37,6 +38,22 @@ export default function UsersAdmin() {
       setShowForm(false);
     } catch (apiError) {
       setError(apiError.response?.data?.message || 'No se pudo crear el usuario.');
+    }
+  }
+
+  async function changeRole(user, role) {
+    if (role === user.roleCode) return;
+    setError('');
+    setSavingRole(user.id);
+    try {
+      const updated = await usersApi.setRole(user.id, role);
+      setUsers((current) => current.map((item) => item.id === user.id
+        ? { ...item, roleCode: updated.role, role: updated.role_name }
+        : item));
+    } catch (apiError) {
+      setError(apiError.response?.data?.message || 'No se pudo cambiar el rol.');
+    } finally {
+      setSavingRole(null);
     }
   }
 
@@ -70,7 +87,13 @@ export default function UsersAdmin() {
               <tr key={user.id}>
                 <td data-label="#">{index + 1}</td>
                 <td data-label="Nombre"><strong>{user.name}</strong></td>
-                <td data-label="Rol">{user.role}</td>
+                <td data-label="Rol">
+                  <select aria-label={`Rol de ${user.name}`} value={user.roleCode} disabled={savingRole === user.id} onChange={(event) => changeRole(user, event.target.value)}>
+                    <option value="CIUDADANO">Ciudadano</option>
+                    <option value="TECNICO">Técnico</option>
+                    <option value="ADMINISTRADOR">Administrador</option>
+                  </select>
+                </td>
                 <td data-label="Correo">{user.email}</td>
                 <td data-label="Estado"><span className={`status-badge ${user.active ? 'status-success' : 'status-danger'}`}>{user.active ? 'Activo' : 'Inactivo'}</span></td>
                 <td className="table-action" data-label="Acciones"><button className="button button-small button-light" type="button" onClick={() => toggleUser(user)}>{user.active ? 'Desactivar' : 'Activar'}</button></td>

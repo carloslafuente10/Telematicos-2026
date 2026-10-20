@@ -19,3 +19,8 @@ export async function setStatus(id, active) {
   const response = await api.patch(`/users/${id}/status`, { active });
   return response.data.data.user;
 }
+
+export async function setRole(id, role) {
+  const response = await api.patch(`/users/${id}/role`, { role });
+  return response.data.data.user;
+}
